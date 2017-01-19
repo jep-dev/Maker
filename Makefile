@@ -1,0 +1,140 @@
+# Copy of variable names s.t. new variables can be distinguished
+old_vars:=$(.VARIABLES)
+
+# Formatting variables to avoid confusion later
+space=
+space:=$(space) $(space)
+colon:=:
+
+# Variable prefixes by category
+v_sources:=hpp tpp cpp
+v_apps:=app
+v_deps:=dep tdep
+v_libraries:=obj dlib#slib
+v_executables:=bin
+v_all_in:=$(foreach V,sources apps,$(v_$(V)))
+v_all_out:=$(foreach V,deps libraries executables,$(v_$(V)))
+v_all:=$(foreach V,in out,$(v_all_$(V)))
+
+# Input directories
+hpp_dir?=include/
+tpp_dir?=$(hpp_dir)
+cpp_dir?=src/
+app_dir?=app/
+dep_dir?=dep/
+tdep_dir?=$(dep_dir)
+# Library directories
+lib_dir?=lib/
+dlib_dir?=$(lib_dir)
+obj_dir?=$(lib_dir)
+# Binary directory
+bin_dir?=bin/
+
+# File prefixes
+lib_pre?=lib
+# slib_pre?=$(lib_pre)
+dlib_pre?=$(lib_pre)
+
+# File suffixes
+hpp_ext?=.hpp
+tpp_ext?=.tpp
+cpp_ext?=.cpp
+app_ext?=$(cpp_ext)
+dep_ext?=.d
+tdep_ext?=.Td
+obj_ext?=.o
+# slib_ext?=.a
+dlib_ext?=.so
+
+# Search for subdirectories
+$(foreach V,$(v_all),\
+	$(eval override $(V)_dirs+=$$(shell find $($(V)_dir) -type d)))
+# Search for files
+source_obj_files:=$(strip $(foreach F,\
+	$(foreach D,$(cpp_dirs),$(wildcard $(D)*$(cpp_ext))),\
+	$(F:$(cpp_dir)%$(cpp_ext)=$(obj_dir)%$(obj_ext))))
+app_obj_files:=$(strip $(foreach F,\
+	$(foreach D,$(app_dirs),$(wildcard $(D)*$(app_ext))),\
+	$(F:$(app_dir)%$(app_ext)=$(obj_dir)%$(obj_ext))))
+obj_files:=$(source_obj_files) $(app_obj_files)
+
+$(foreach U,source app,\
+	$(eval $(U)_dep_files:=$(foreach O,$($(U)_obj_files),\
+	$(O:$(obj_dir)%$(obj_ext)=$(dep_dir)%$(dep_ext))))\
+	$(eval $(U)_tdep_files:=$(foreach D,$($(U)_dep_files),\
+	$(D:$(dep_dir)%$(dep_ext)=$(tdep_dir)%$(tdep_ext)))))
+
+#dep_files:=$(foreach D,$(source_dep_files) $(app_dep_files),$(strip $(D)))
+#tdep_files:=$(foreach D,$(source_tdep_files) $(app_tdep_files),$(strip $(D)))
+$(foreach V,$(v_sources) $(v_apps),\
+	$(eval override $(V)_files+=$$(strip $$(filter %$($(V)_ext),\
+	$$(shell find $($(V)_dir) -type f)))))
+$(foreach U,dep tdep,$(eval $(U)_files:=$(foreach V,source app,$($(V)_$(U)_files))))
+
+$(foreach L,$(v_libraries),\
+	$(foreach D,$($(L)_dirs),\
+	$(eval RPATH:=$(if $(RPATH),$(RPATH):$(D),$(D)))))
+override dlib_files+=$(strip $(foreach F,$(foreach V,$(cpp_files),\
+	$(V:$(cpp_dir)%$(cpp_ext)=$(dlib_dir)%$(dlib_ext))),\
+	$(dir $(F))$(dlib_pre)$(notdir $(F))))
+override bin_files+=$(strip $(foreach F,$(filter %$(app_ext),\
+	$(wildcard $(app_dir)*$(app_ext)) $(wildcard $(app_dir)**/*$(app_ext))),\
+	$(F:$(app_dir)%$(app_ext)=$(bin_dir)%$(bin_ext))))
+
+all_out_files:=$(foreach V,v_deps v_libraries v_executables,\
+	$(foreach U,$($(V)),$($(U)_files)))
+all_files:=$(foreach V,in out,$(all_$(V)_files))
+
+
+override CXXFLAGS+=-std=c++11 -fPIC $(foreach I,$(hpp_dirs),-I$(I))
+DEPFLAGS=-MMD -MP -MF
+post_compile=@cp $(tdep_dir)$*$(tdep_ext) $(dep_dir)$*$(dep_ext);\
+			 cat < $(tdep_dir)$*$(tdep_ext) \
+			 | sort | uniq >> $(dep_dir)$*$(dep_ext)
+override LDFLAGS+=$(foreach L,$(obj_dirs) $(dlib_dirs),-L$(L))\
+	-Wl,-rpath,$(RPATH)
+override LDLIBS+=$(foreach F,$(foreach L,$(dlib_files),$(notdir $(L))),\
+	$(F:$(dlib_pre)%$(dlib_ext)=-l%))
+
+MAKEDEP=$(CXX) -M $(CXXFLAGS) $(DEPFLAGS) $(tdep_dir)$*$(tdep_ext) $<
+
+default:$(filter-out $(dep_files) $(tdep_files),$(all_out_files))
+all:default
+-include $(dep_files)
+
+$(source_tdep_files):$(tdep_dir)%$(tdep_ext):$(obj_dir)%$(obj_ext)
+	$(post_compile)
+
+$(app_tdep_files):$(tdep_dir)%$(tdep_ext):$(obj_dir)%$(obj_ext)
+	$(post_compile)
+
+$(source_obj_files):$(obj_dir)%$(obj_ext):$(cpp_dir)%$(cpp_ext)
+	$(MAKEDEP)
+	$(CXX) $(CXXFLAGS) -c -o $@ $<
+$(app_obj_files):$(obj_dir)%$(obj_ext):$(app_dir)%$(app_ext)
+	$(MAKEDEP)
+	$(CXX) $(CXXFLAGS) -c -o $@ $<
+
+$(dlib_files):$(dlib_dir)$(dlib_pre)%$(dlib_ext):$(obj_dir)%$(obj_ext)
+	$(CXX) $(LDFLAGS) -shared -o $@ $<
+$(bin_files):$(bin_dir)%$(bin_ext):$(obj_dir)%$(obj_ext) $(dlib_files)
+	$(CXX) $(LDFLAGS) -o $@ $< $(LDLIBS)
+
+info-%: echo-Info(%)\:\  .phony_explicit
+	$($(info $(call $*)):%=echo %;)
+echo-%: .phony_explicit
+	@echo "$*"
+print-%: .phony_explicit
+	@echo "$* = \"$($*)\""
+
+find-%: .phony_explicit
+	@echo "In \"$*\", found \"$(shell find $* -type f)\""
+
+print_vars: $(foreach V,\
+	$(filter-out $(old_vars) old_vars,$(.VARIABLES)),print-$(V)) .phony_explicit
+
+$(foreach V,$(v_sources) $(v_apps),$(eval vpath %$($(S)_ext) $($(S)_dirs)))
+
+clean:;@$(RM) $(all_out_files)
+.PHONY: clean all .phony_explicit
+.PRECIOUS:$(dep_files) $(tdep_files)
