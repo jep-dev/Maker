@@ -45,6 +45,7 @@ tdep_ext?=.Td
 obj_ext?=.o
 # slib_ext?=.a
 dlib_ext?=.so
+sentinel_ext?=.sen
 
 # Search for subdirectories
 $(foreach V,$(v_all),\
@@ -146,8 +147,6 @@ print_vars: $(foreach V,\
 	$(filter-out $(old_vars) old_vars,$(.VARIABLES)),print-$(V)) .phony_explicit
 
 $(foreach V,$(v_sources) $(v_apps),$(eval vpath %$($(S)_ext) $($(S)_dirs)))
-
-phony_explicit:
 
 clean:;@$(RM) $(all_out_files)
 .PHONY: clean all print_vars print-% echo-% .phony_explicit
