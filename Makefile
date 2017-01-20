@@ -109,6 +109,7 @@ default:$(filter-out $(dep_files) $(tdep_files),$(all_out_files))
 all:default
 -include $(dep_files)
 
+
 $(source_tdep_files):$(tdep_dir)%$(tdep_ext):$(obj_dir)%$(obj_ext)
 	$(post_compile)
 
@@ -122,6 +123,11 @@ $(app_obj_files):$(obj_dir)%$(obj_ext):$(app_dir)%$(app_ext)
 	$(MAKEDEP)
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
+# Add dependency on TPP file if it exists
+$(foreach T,$(tpp_files),$(eval \
+	$(T:$(tpp_dir)%$(tpp_ext)=$(obj_dir)%$(obj_ext)) \
+	: $(obj_dir)%$(obj_ext) : $(tpp_dir)%$(tpp_ext)))
+
 $(dlib_files):$(dlib_dir)%$(dlib_ext):\
 	$($(%:$(notdir %)=$($(notdir %):$(dlib_pre)%$(dlib_ext)=%$(obj_ext))):\
 	$(dlib_dir)%=$(obj_dir)%)
@@ -134,7 +140,7 @@ info-%: echo-Info(%)\:\  .phony_explicit
 echo-%: .phony_explicit
 	@echo "$*"
 print-%: .phony_explicit
-	@echo "$* = \"$($*)\""
+	$(info $* = $($*))
 
 find-%: .phony_explicit
 	@echo "In \"$*\", found \"$(shell find $* -type f)\""
@@ -144,6 +150,8 @@ print_vars: $(foreach V,\
 
 $(foreach V,$(v_sources) $(v_apps),$(eval vpath %$($(S)_ext) $($(S)_dirs)))
 
+phony_explicit:
+
 clean:;@$(RM) $(all_out_files)
-.PHONY: clean all .phony_explicit
+.PHONY: clean all print_vars print-% echo-% .phony_explicit
 .PRECIOUS:$(dep_files) $(tdep_files)
