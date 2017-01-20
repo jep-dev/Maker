@@ -9,7 +9,7 @@ colon:=:
 # Variable prefixes by category
 v_sources:=hpp tpp cpp
 v_apps:=app
-v_deps:=dep tdep
+v_deps:=tdep
 v_libraries:=obj dlib#slib
 v_executables:=bin
 v_all_in:=$(foreach V,sources apps,$(v_$(V)))
@@ -29,6 +29,7 @@ dlib_dir?=$(lib_dir)
 obj_dir?=$(lib_dir)
 # Binary directory
 bin_dir?=bin/
+dir_sentinel?=.dirs$(sentinel_ext)
 
 # File prefixes
 lib_pre?=lib
@@ -47,9 +48,26 @@ obj_ext?=.o
 dlib_ext?=.so
 sentinel_ext?=.sen
 
+
+define unique =
+$(foreach W,$1,\
+	$(eval head=$(W))\
+	$(eval override result+=$(filter-out $(result),$(head))))\
+	$(result)
+endef
+#$(eval override result+=$(filter-out $(result),$(head))))$(result)
+
 # Search for subdirectories
 $(foreach V,$(v_all),\
-	$(eval override $(V)_dirs+=$$(shell find $($(V)_dir) -type d)))
+	$(eval override $(V)_dirs+=$(if $(wildcard $($(V)_dir)),\
+	$$(shell find $($(V)_dir) -type d),)))
+$(foreach V,$(v_all_out),\
+	$(foreach U,cpp app,\
+	$(eval override $(V)_dirs+=$($(U)_dirs:$($(U)_dir)%=$($(V)_dir)%))))
+all_dirs:=$(foreach V,hpp tpp cpp app dep obj dlib bin,\
+	$($(V)_dirs) $($(V)_dir))
+$(eval all_dirs:=$(call unique,$(all_dirs)))
+
 # Search for files
 source_obj_files:=$(strip $(foreach F,\
 	$(wildcard $(cpp_dir)**/*$(cpp_ext)),\
@@ -66,10 +84,11 @@ $(foreach U,source app,\
 	$(eval $(U)_tdep_files:=$(foreach D,$($(U)_dep_files),\
 	$(D:$(dep_dir)%$(dep_ext)=$(tdep_dir)%$(tdep_ext)))))
 
-$(foreach V,$(v_sources) $(v_apps),\
-	$(eval override $(V)_files+=$$(strip $$(filter %$($(V)_ext),\
+$(foreach V,$(v_sources) $(v_apps),$(eval \
+	override $(V)_files+=$$(strip $$(filter %$($(V)_ext),\
 	$$(shell find $($(V)_dir) -type f)))))
-$(foreach U,dep tdep,$(eval $(U)_files:=$(foreach V,source app,$($(V)_$(U)_files))))
+$(foreach U,dep tdep,$(eval \
+	$(U)_files:=$(foreach V,source app,$($(V)_$(U)_files))))
 
 $(foreach L,$(v_libraries),\
 	$(foreach D,$($(L)_dirs),\
@@ -81,13 +100,13 @@ override bin_files+=$(strip $(foreach F,$(filter %$(app_ext),\
 	$(wildcard $(app_dir)*$(app_ext)) $(wildcard $(app_dir)**/*$(app_ext))),\
 	$(F:$(app_dir)%$(app_ext)=$(bin_dir)%$(bin_ext))))
 
-all_out_files:=$(foreach V,v_deps v_libraries v_executables,\
+all_out_files:=$(dir_sentinel) \
+	$(foreach V,v_deps v_libraries v_executables,\
 	$(foreach U,$($(V)),$($(U)_files)))
-all_files:=$(foreach V,in out,$(all_$(V)_files))
-
+all_files:=$(all_out_files)
 
 override CXXFLAGS+=-std=c++11 -fPIC $(foreach I,$(hpp_dirs),-I$(I))
-DEPFLAGS=-MMD -MP -MF
+DEPFLAGS?=-MMD -MP -MF
 post_compile=@cp $(tdep_dir)$*$(tdep_ext) $(dep_dir)$*$(dep_ext);\
 			 cat < $(tdep_dir)$*$(tdep_ext) \
 			 | sort | uniq >> $(dep_dir)$*$(dep_ext)
@@ -98,9 +117,11 @@ override LDLIBS+=$(foreach F,$(foreach L,$(dlib_files),$(notdir $(L))),\
 
 MAKEDEP=$(CXX) -M $(CXXFLAGS) $(DEPFLAGS) $(tdep_dir)$*$(tdep_ext) $<
 
-default:$(filter-out $(dep_files) $(tdep_files),$(all_out_files))
+default:$(dir_sentinel) $(all_dirs)\
+	$(filter-out $(tdep_files),$(all_out_files)) |$(dir_sentinel)
 all:default
--include $(dep_files)
+-include $(tdep_files)
+#-include $(dep_files)
 
 
 $(source_tdep_files):$(tdep_dir)%$(tdep_ext):$(obj_dir)%$(obj_ext)
@@ -132,6 +153,10 @@ $(dlib_files):$(dlib_dir)%$(dlib_ext):\
 $(bin_files):$(bin_dir)%$(bin_ext):\
 	$(obj_dir)%$(obj_ext) $(obj_files) $(dlib_files)
 	$(CXX) $(LDFLAGS) -o $@ $< $(LDLIBS)
+
+$(dir_sentinel): $(all_dirs)
+	@touch $@
+$(all_dirs): %:; $(if $(wildcard $@),,@mkdir $@)
 
 info-%: echo-Info(%)\:\  .phony_explicit
 	$($(info $(call $*)):%=echo %;)
