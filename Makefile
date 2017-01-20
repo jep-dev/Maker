@@ -50,17 +50,11 @@ dlib_ext?=.so
 $(foreach V,$(v_all),\
 	$(eval override $(V)_dirs+=$$(shell find $($(V)_dir) -type d)))
 # Search for files
-#source_obj_files:=$(strip $(foreach F,\
-	$(foreach D,$(cpp_dirs),$(wildcard $(D)**/*$(cpp_ext))),\
-	$(F:$(cpp_dir)%$(cpp_ext)=$(obj_dir)%$(obj_ext))))
 source_obj_files:=$(strip $(foreach F,\
 	$(wildcard $(cpp_dir)**/*$(cpp_ext)),\
 	$(F:$(cpp_dir)%$(cpp_ext)=$(obj_dir)%$(obj_ext))))
 app_obj_files:=$(strip $(foreach F,\
 	$(foreach D,$(app_dirs),$(wildcard $(D)*$(app_ext))),\
-	$(F:$(app_dir)%$(app_ext)=$(obj_dir)%$(obj_ext))))
-#app_obj_files:=$(strip $(foreach F,\
-	$(wildcard $(app_dir)**/*$(app_ext)),\
 	$(F:$(app_dir)%$(app_ext)=$(obj_dir)%$(obj_ext))))
 
 obj_files:=$(source_obj_files) $(app_obj_files)
@@ -71,8 +65,6 @@ $(foreach U,source app,\
 	$(eval $(U)_tdep_files:=$(foreach D,$($(U)_dep_files),\
 	$(D:$(dep_dir)%$(dep_ext)=$(tdep_dir)%$(tdep_ext)))))
 
-#dep_files:=$(foreach D,$(source_dep_files) $(app_dep_files),$(strip $(D)))
-#tdep_files:=$(foreach D,$(source_tdep_files) $(app_tdep_files),$(strip $(D)))
 $(foreach V,$(v_sources) $(v_apps),\
 	$(eval override $(V)_files+=$$(strip $$(filter %$($(V)_ext),\
 	$$(shell find $($(V)_dir) -type f)))))
@@ -127,12 +119,17 @@ $(app_obj_files):$(obj_dir)%$(obj_ext):$(app_dir)%$(app_ext)
 $(foreach T,$(tpp_files),$(eval \
 	$(T:$(tpp_dir)%$(tpp_ext)=$(obj_dir)%$(obj_ext)) \
 	: $(obj_dir)%$(obj_ext) : $(tpp_dir)%$(tpp_ext)))
+# Same for HPPs
+$(foreach H,$(hpp_files),$(eval \
+	$(H:$(hpp_dir)%$(hpp_ext)=$(obj_dir)%$(obj_ext)) \
+	: $(obj_dir)%$(obj_ext) : $(hpp_dir)%$(hpp_ext)))
 
 $(dlib_files):$(dlib_dir)%$(dlib_ext):\
 	$($(%:$(notdir %)=$($(notdir %):$(dlib_pre)%$(dlib_ext)=%$(obj_ext))):\
 	$(dlib_dir)%=$(obj_dir)%)
 	$(CXX) $(LDFLAGS) -shared -o $@ $<
-$(bin_files):$(bin_dir)%$(bin_ext):$(obj_dir)%$(obj_ext) $(dlib_files)
+$(bin_files):$(bin_dir)%$(bin_ext):\
+	$(obj_dir)%$(obj_ext) $(obj_files) $(dlib_files)
 	$(CXX) $(LDFLAGS) -o $@ $< $(LDLIBS)
 
 info-%: echo-Info(%)\:\  .phony_explicit
