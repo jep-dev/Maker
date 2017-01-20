@@ -50,12 +50,19 @@ dlib_ext?=.so
 $(foreach V,$(v_all),\
 	$(eval override $(V)_dirs+=$$(shell find $($(V)_dir) -type d)))
 # Search for files
+#source_obj_files:=$(strip $(foreach F,\
+	$(foreach D,$(cpp_dirs),$(wildcard $(D)**/*$(cpp_ext))),\
+	$(F:$(cpp_dir)%$(cpp_ext)=$(obj_dir)%$(obj_ext))))
 source_obj_files:=$(strip $(foreach F,\
-	$(foreach D,$(cpp_dirs),$(wildcard $(D)*$(cpp_ext))),\
+	$(wildcard $(cpp_dir)**/*$(cpp_ext)),\
 	$(F:$(cpp_dir)%$(cpp_ext)=$(obj_dir)%$(obj_ext))))
 app_obj_files:=$(strip $(foreach F,\
 	$(foreach D,$(app_dirs),$(wildcard $(D)*$(app_ext))),\
 	$(F:$(app_dir)%$(app_ext)=$(obj_dir)%$(obj_ext))))
+#app_obj_files:=$(strip $(foreach F,\
+	$(wildcard $(app_dir)**/*$(app_ext)),\
+	$(F:$(app_dir)%$(app_ext)=$(obj_dir)%$(obj_ext))))
+
 obj_files:=$(source_obj_files) $(app_obj_files)
 
 $(foreach U,source app,\
@@ -115,7 +122,9 @@ $(app_obj_files):$(obj_dir)%$(obj_ext):$(app_dir)%$(app_ext)
 	$(MAKEDEP)
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
-$(dlib_files):$(dlib_dir)$(dlib_pre)%$(dlib_ext):$(obj_dir)%$(obj_ext)
+$(dlib_files):$(dlib_dir)%$(dlib_ext):\
+	$($(%:$(notdir %)=$($(notdir %):$(dlib_pre)%$(dlib_ext)=%$(obj_ext))):\
+	$(dlib_dir)%=$(obj_dir)%)
 	$(CXX) $(LDFLAGS) -shared -o $@ $<
 $(bin_files):$(bin_dir)%$(bin_ext):$(obj_dir)%$(obj_ext) $(dlib_files)
 	$(CXX) $(LDFLAGS) -o $@ $< $(LDLIBS)
