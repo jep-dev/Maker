@@ -1,6 +1,7 @@
 readme_dir?=
-readme_ext?=.md
 readme_name?=README
+readme_ext?=.md
+readme_file?=$(readme_dir)$(readme_name)$(readme_ext)
 
 doxygen?=doxygen
 doxymake?=$(doxygen) -s -g
@@ -10,6 +11,19 @@ doc_ext?=
 doc_file?=$(doc_dir)$(doc_name)$(doc_ext)
 doc_sentinel?=$(doc_dir).$(doc_name)$(sentinel_ext)
 doc_files?=$(doc_sentinel) $(doc_file)
+
+DOXY_STRIP_FROM_PATH?=../
+DOXY_QT_AUTOBRIEF?=YES
+DOXY_BUILTIN_STL_SUPPORT?=YES
+DOXY_EXTRACT_ALL?=YES
+DOXY_EXTRACT_PRIVATE?=YES
+DOXY_EXTRACT_PACKAGE?=YES
+DOXY_SHOW_INCLUDE_FILES?=YES
+DOXY_RECURSIVE?=YES
+DOXY_USE_MDFILE_AS_MAINPAGE?=$(readme_file)
+DOXY_GENERATE_MAN?=YES
+DOXY_CALL_GRAPH?=YES
+DOXY_DOT_TRANSPARENT?=YES
 
 # To define <X> in your Doxyfile, define DOXY_<X> in your makefile
 # For example, DOXY_PROJECT_NAME?=my_project_name
