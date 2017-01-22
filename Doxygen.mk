@@ -18,8 +18,7 @@ V_DOXY_ALL_SUFFIXES=$(V_DOXY_ALL:V_DOXY_%=%)
 
 doc: $(doc_sentinel) .phony_explicit
 
-
-$(doc_sentinel): $(doc_file) $(all_out_files)
+$(doc_sentinel): $(doc_file) $(filter-out $(doc_files),$(all_out_files))
 	$(doxygen) $(doc_file)
 	@touch $@
 
