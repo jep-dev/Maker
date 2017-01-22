@@ -146,9 +146,12 @@ $(foreach H,$(hpp_files),$(eval \
 	$(H:$(hpp_dir)%$(hpp_ext)=$(obj_dir)%$(obj_ext)) \
 	: $(obj_dir)%$(obj_ext) : $(hpp_dir)%$(hpp_ext)))
 
-$(dlib_files):$(dlib_dir)%$(dlib_ext):\
+# $(dlib_dir)%=$(obj_dir)%)
+
+#$(dlib_files):$(dlib_dir)%$(dlib_ext):\
 	$($(%:$(notdir %)=$($(notdir %):$(dlib_pre)%$(dlib_ext)=%$(obj_ext))):\
-	$(dlib_dir)%=$(obj_dir)%)
+	$(obj_files)
+$(dlib_files):$(dlib_dir)%$(dlib_ext): $(obj_files)
 	$(CXX) $(LDFLAGS) -shared -o $@ $<
 $(bin_files):$(bin_dir)%$(bin_ext):\
 	$(obj_dir)%$(obj_ext) $(obj_files) $(dlib_files)
