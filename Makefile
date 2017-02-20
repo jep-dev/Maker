@@ -55,7 +55,6 @@ $(foreach W,$1,\
 	$(eval override result+=$(filter-out $(result),$(head))))\
 	$(result)
 endef
-#$(eval override result+=$(filter-out $(result),$(head))))$(result)
 
 # Search for subdirectories
 $(foreach V,$(v_all),\
@@ -121,14 +120,6 @@ default:$(dir_sentinel) $(all_dirs)\
 	$(filter-out $(tdep_files),$(all_out_files)) |$(dir_sentinel)
 all:default
 -include $(tdep_files)
-#-include $(dep_files)
-
-
-$(source_tdep_files):$(tdep_dir)%$(tdep_ext):$(obj_dir)%$(obj_ext)
-	$(post_compile)
-
-$(app_tdep_files):$(tdep_dir)%$(tdep_ext):$(obj_dir)%$(obj_ext)
-	$(post_compile)
 
 $(source_obj_files):$(obj_dir)%$(obj_ext):$(cpp_dir)%$(cpp_ext)
 	$(MAKEDEP)
@@ -146,13 +137,8 @@ $(foreach H,$(hpp_files),$(eval \
 	$(H:$(hpp_dir)%$(hpp_ext)=$(obj_dir)%$(obj_ext)) \
 	: $(obj_dir)%$(obj_ext) : $(hpp_dir)%$(hpp_ext)))
 
-# $(dlib_dir)%=$(obj_dir)%)
-
-#$(dlib_files):$(dlib_dir)%$(dlib_ext):\
-	$($(%:$(notdir %)=$($(notdir %):$(dlib_pre)%$(dlib_ext)=%$(obj_ext))):\
-	$(obj_files)
 $(dlib_files):$(dlib_dir)%$(dlib_ext): $(obj_files)
-	$(CXX) $(LDFLAGS) -shared -o $@ $<
+	$(CXX) $(LDFLAGS) -shared -o $@ $^
 $(bin_files):$(bin_dir)%$(bin_ext):\
 	$(obj_dir)%$(obj_ext) $(obj_files) $(dlib_files)
 	$(CXX) $(LDFLAGS) -o $@ $< $(LDLIBS)
@@ -176,6 +162,5 @@ print_vars: $(foreach V,\
 
 $(foreach V,$(v_sources) $(v_apps),$(eval vpath %$($(S)_ext) $($(S)_dirs)))
 
-clean:;@$(RM) $(all_out_files)
+clean: .phony_explicit; @$(RM) $(all_out_files)
 .PHONY: clean all print_vars print-% echo-% .phony_explicit
-.PRECIOUS:$(dep_files) $(tdep_files)
