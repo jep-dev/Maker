@@ -12,6 +12,7 @@ doc_file?=$(doc_dir)$(doc_name)$(doc_ext)
 doc_sentinel?=$(doc_dir).$(doc_name)$(sentinel_ext)
 doc_files?=$(doc_sentinel) $(doc_file)
 
+DOXY_OUTPUT_DIRECTORY?=$(doc_dir)
 DOXY_STRIP_FROM_PATH?=../
 DOXY_QT_AUTOBRIEF?=YES
 DOXY_BUILTIN_STL_SUPPORT?=YES
@@ -30,7 +31,7 @@ DOXY_DOT_TRANSPARENT?=YES
 V_DOXY_ALL=$(filter DOXY_%,$(.VARIABLES))
 V_DOXY_ALL_SUFFIXES=$(V_DOXY_ALL:V_DOXY_%=%)
 
-doc: $(doc_sentinel) .phony_explicit
+doc: default $(doc_sentinel) .phony_explicit
 
 $(doc_sentinel): $(doc_file) $(filter-out $(doc_files),$(all_out_files))
 	$(doxygen) $(doc_file)
