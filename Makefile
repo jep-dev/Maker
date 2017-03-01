@@ -13,7 +13,7 @@ v_deps:=tdep
 v_libraries:=obj dlib# slib
 v_executables:=bin
 v_shadow_in:=$(v_sources)
-v_shadow_out:=$(v_deps)
+v_shadow_out:=
 v_all_in:=$(foreach V,sources apps,$(v_$(V)))
 v_all_out:=$(foreach V,deps libraries executables,$(v_$(V)))
 v_all:=$(foreach V,in out,$(v_all_$(V)))
@@ -68,7 +68,7 @@ all_dirs:=$(strip $(call unique,\
 		$(foreach D,$(shell find $($(S_IN)_dir) -type d),\
 			$(foreach S_OUT,$(v_shadow_out),\
 			$(D) $(D:$($(S_IN)_dir)%=$($(S_OUT)_dir)%))))\
-	$(link_dirs) $(inc_dirs) $(bin_dir)))
+	$(link_dirs) $(inc_dirs) $(bin_dir) $(dep_dir) $(tdep_dir)))
 
 # Collect sources
 $(foreach V,$(v_sources) $(v_apps),$(eval \
@@ -141,7 +141,7 @@ default:$(dir_sentinel) $(all_dirs)\
 all:default
 
 # Include tdeps unless missing
--include $(tdep_files)
+-include $(dep_files)
 
 # TODO unify source_obj_files and app_obj_files
 
@@ -153,18 +153,11 @@ $(app_obj_files):$(obj_dir)%$(obj_ext):$(filter %,$(app_files))
 	$(MAKEDEP)
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
-# TODO unify tpp_files and hpp_files
-
-# Add dependency on TPP file if it exists
-$(foreach T,$(tpp_files),$(eval \
-	$(T:$(tpp_dir)%=$($(notdir %):%$(tpp_ext)=$(obj_dir)%$(obj_ext))) \
-	: $(obj_dir)%$(obj_ext) : $(T)))
-# Same for HPPs
-$(foreach H,$(hpp_files),$(eval \
-	$(H:$(hpp_dir)%$(hpp_ext)=$(obj_dir)%$(obj_ext)) \
-	: $(obj_dir)%$(obj_ext) : $(H)))
-
-# TODO Restrict added objs to just the real dependencies
+# Add dependency on hpp/tpp file if it exists
+$(foreach S,hpp tpp,$(foreach F,$($(S)_files),\
+	$(eval $(F:$($(S)_dir)%=\
+	$($(notdir %):%$($(S)_ext)=$(obj_dir)%$(obj_ext))):\
+	$(obj_dir)%$(obj_ext) : $(F))))
 
 # Build each dynamic library from the corresponding object files
 $(dlib_files):$(dlib_dir)$(dlib_pre)%$(dlib_ext):$(obj_dir)%$(obj_ext)
@@ -172,7 +165,7 @@ $(dlib_files):$(dlib_dir)$(dlib_pre)%$(dlib_ext):$(obj_dir)%$(obj_ext)
 
 # TODO Restrict added objs/dlibs to just the real dependencies
 
-# Build each binary from the corresponding object file 
+# Build each binary from the corresponding object file
 $(bin_files):$(bin_dir)%$(bin_ext):\
 	$(obj_dir)%$(obj_ext) $(obj_files) $(dlib_files)
 	$(CXX) $(LDFLAGS) -o $@ $< $(LDLIBS)
