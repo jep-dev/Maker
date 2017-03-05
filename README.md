@@ -3,14 +3,14 @@
 
 #### What Maker is
 
-Maker is a heavily-parametrized makefile intended to manage most or all of the
-boilerplate code from a typical C/C++ makefile. It should support parallel
-builds without issue (see Usage).
+Maker is a heavily-parametrized, extensible  makefile intended to manage most
+or all of the boilerplate code from a typical C/C++ makefile. It should support
+parallel builds without issue (see Usage).
 
 #### What Maker is not
 
-Maker is neither a recursive makefile nor a makefile generator; it only needs to
-be included from your makefile with minimal configuration.
+Maker is neither a recursive makefile nor a makefile generator; it only needs
+to be included from your makefile with minimal configuration.
 
 #### Example
 
@@ -28,9 +28,8 @@ override LDLIBS+=-lSDL2_ttf -lSDL2 -ldl
 
 # Add Doxygen files as dependencies for 'all' and 'clean'
 override all_out_files+=$(doc_files)
-# Alternatively:
-all: doc
-```
+# Alternatively, add to 'all' but not 'clean':
+all: doc ```
 
 #### Usage
 
@@ -52,5 +51,3 @@ make info-EDITOR
 # If neither of these work, try:
 make --print-data-base | grep ...
 ```
-
-
