@@ -1,4 +1,5 @@
 # Maker
+
 #### One makefile to rule them all
 
 #### What Maker is
@@ -28,12 +29,12 @@ override LDLIBS+=-lSDL2_ttf -lSDL2 -ldl
 
 # Add Doxygen files as dependencies for 'all' and 'clean'
 override all_out_files+=$(doc_files)
-# Alternatively, add to 'all' but not 'clean':
-all: doc ```
+all: doc
+```
 
 #### Usage
 
-```bash
+```
 # Default target (missing dirs + sentinel, objects, deps, libs, binaries)
 make
 # Default target with 4 'simultaneous' (concurrent) jobs
